@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "rl1/+6zAQTY=",
+  "success": true,
+  "projectFilePath": "c:\\Depo\\sshportfw\\SshPortForwarder\\SshPortForwarder.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Halit\\.nuget\\packages\\bouncycastle.cryptography\\2.6.2\\bouncycastle.cryptography.2.6.2.nupkg.sha512",
+    "C:\\Users\\Halit\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\Halit\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.3\\microsoft.extensions.logging.abstractions.8.0.3.nupkg.sha512",
+    "C:\\Users\\Halit\\.nuget\\packages\\newtonsoft.json\\13.0.4\\newtonsoft.json.13.0.4.nupkg.sha512",
+    "C:\\Users\\Halit\\.nuget\\packages\\ssh.net\\2025.1.0\\ssh.net.2025.1.0.nupkg.sha512"
+  ],
+  "logs": []
+}
