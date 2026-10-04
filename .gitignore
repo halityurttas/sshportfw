@@ -1,6 +1,6 @@
 # Build çıktıları
-bin/
-obj/
+bin
+obj
 
 # Visual Studio / VS Code
 .vs/
@@ -23,3 +23,6 @@ profiles.json
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+#releases
+release

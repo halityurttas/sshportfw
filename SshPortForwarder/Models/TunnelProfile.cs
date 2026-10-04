@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace SshPortForwarder.Models
 {
@@ -16,12 +17,8 @@ namespace SshPortForwarder.Models
         public string PrivateKeyPassphrase { get; set; } = "";
         public AuthMethod AuthMethod { get; set; } = AuthMethod.Password;
 
-        // Forward hedef bilgileri
-        public string RemoteHost { get; set; } = "127.0.0.1";
-        public int RemotePort { get; set; } = 80;
-
-        // Yerel port
-        public int LocalPort { get; set; } = 8080;
+        // Port yönlendirmeleri (her satır ayrı bir localhost→uzak hedef eşlemesi)
+        public List<PortForward> Forwards { get; set; } = new();
 
         // Otomatik yeniden bağlanma
         public bool AutoReconnect { get; set; } = true;

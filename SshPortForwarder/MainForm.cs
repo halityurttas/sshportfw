@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using SshPortForwarder.Models;
@@ -11,6 +12,7 @@ namespace SshPortForwarder
     {
         private List<TunnelProfile> _profiles = new();
         private readonly Dictionary<Guid, SshTunnelService> _services = new();
+        private BindingList<PortForward>? _forwards;
 
         public MainForm()
         {
@@ -41,6 +43,7 @@ namespace SshPortForwarder
         private void btnAdd_Click(object sender, EventArgs e)
         {
             var p = new TunnelProfile { Name = "Yeni Profil " + (_profiles.Count + 1) };
+            p.Forwards.Add(new PortForward());
             _profiles.Add(p);
             SaveProfiles();
             RefreshList();
@@ -84,9 +87,7 @@ namespace SshPortForwarder
             txtPassword.Text = p.GatewayPassword;
             txtKeyPath.Text = p.PrivateKeyPath;
             txtKeyPass.Text = p.PrivateKeyPassphrase;
-            txtRemoteHost.Text = p.RemoteHost;
-            numRemotePort.Value = p.RemotePort;
-            numLocalPort.Value = p.LocalPort;
+            BindForwards(p);
             chkAutoReconnect.Checked = p.AutoReconnect;
             numReconnectDelay.Value = p.ReconnectDelaySeconds;
             rbPassword.Checked = p.AuthMethod == AuthMethod.Password;
@@ -104,9 +105,6 @@ namespace SshPortForwarder
             p.GatewayPassword = txtPassword.Text;
             p.PrivateKeyPath = txtKeyPath.Text.Trim();
             p.PrivateKeyPassphrase = txtKeyPass.Text;
-            p.RemoteHost = txtRemoteHost.Text.Trim();
-            p.RemotePort = (int)numRemotePort.Value;
-            p.LocalPort = (int)numLocalPort.Value;
             p.AutoReconnect = chkAutoReconnect.Checked;
             p.ReconnectDelaySeconds = (int)numReconnectDelay.Value;
             p.AuthMethod = rbKey.Checked ? AuthMethod.PrivateKey : AuthMethod.Password;
@@ -116,18 +114,29 @@ namespace SshPortForwarder
         {
             txtName.Clear(); txtGatewayHost.Clear(); txtUsername.Clear();
             txtPassword.Clear(); txtKeyPath.Clear(); txtKeyPass.Clear();
-            txtRemoteHost.Clear();
+            _forwards = null;
+            gridForwards.DataSource = null;
         }
 
         private void btnSave_Click(object sender, EventArgs e)
         {
             if (CurrentProfile is not { } p) return;
+            gridForwards.EndEdit();
             CollectForm(p);
             SaveProfiles();
             // listbox text'ini güncelle
             int idx = listProfiles.SelectedIndex;
             listProfiles.Items[idx] = p;
             listProfiles.SelectedIndex = idx;
+        }
+
+        // ──────────────── Port yönlendirme tablosu ────────────────
+
+        private void BindForwards(TunnelProfile p)
+        {
+            p.Forwards ??= new List<PortForward>();
+            _forwards = new BindingList<PortForward>(p.Forwards);
+            gridForwards.DataSource = _forwards;
         }
 
         // ──────────────── Auth UI ────────────────
@@ -163,7 +172,16 @@ namespace SshPortForwarder
         private void btnConnect_Click(object sender, EventArgs e)
         {
             if (CurrentProfile is not { } p) return;
+            gridForwards.EndEdit();
             CollectForm(p);
+
+            if (SshTunnelService.Validate(p) is { } error)
+            {
+                MessageBox.Show(this, error, "Eksik Bilgi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             SaveProfiles();
 
             if (!_services.TryGetValue(p.Id, out var svc))

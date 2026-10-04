@@ -1,3 +1,5 @@
+using SshPortForwarder.Models;
+
 namespace SshPortForwarder
 {
     partial class MainForm
@@ -158,15 +160,59 @@ namespace SshPortForwarder
             row++;
 
             // Hedef
-            AddSeparator("── Yönlendirme ──");
-            txtRemoteHost = new TextBox();
-            AddRow("Uzak Host:", txtRemoteHost);
+            AddSeparator("── Port Yönlendirmeleri ──");
 
-            numRemotePort = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 80 };
-            AddRow("Uzak Port:", numRemotePort);
+            gridForwards = new DataGridView
+            {
+                AutoGenerateColumns = false,
+                AllowUserToAddRows = true,
+                AllowUserToDeleteRows = true,
+                AllowUserToResizeRows = false,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                EditMode = DataGridViewEditMode.EditOnEnter,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                Height = 150
+            };
 
-            numLocalPort = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 8080 };
-            AddRow("Yerel Port:", numLocalPort);
+            gridForwards.Columns.Add(new DataGridViewCheckBoxColumn
+            {
+                DataPropertyName = nameof(PortForward.Enabled),
+                HeaderText = "Etkin",
+                FillWeight = 12,
+                MinimumWidth = 50
+            });
+            gridForwards.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(PortForward.LocalPort),
+                HeaderText = "Yerel Port",
+                FillWeight = 18,
+                MinimumWidth = 60
+            });
+            gridForwards.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(PortForward.RemoteHost),
+                HeaderText = "Uzak Host",
+                FillWeight = 45,
+                MinimumWidth = 100
+            });
+            gridForwards.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(PortForward.RemotePort),
+                HeaderText = "Uzak Port",
+                FillWeight = 18,
+                MinimumWidth = 60
+            });
+            AddFullRow(gridForwards);
+
+            var lblForwardHint = new Label
+            {
+                Text = "Satır eklemek için tablonun sonundaki boş satırı doldurun. Tüm satırlar tek SSH bağlantısı üzerinden açılır.",
+                ForeColor = System.Drawing.Color.Gray,
+                AutoSize = true
+            };
+            AddFullRow(lblForwardHint);
 
             // Yeniden bağlanma
             AddSeparator("── Bağlantı ──");
@@ -239,8 +285,9 @@ namespace SshPortForwarder
         private ListBox listProfiles = null!;
         private Button btnAdd = null!, btnDelete = null!;
         private TextBox txtName = null!, txtGatewayHost = null!, txtUsername = null!;
-        private TextBox txtPassword = null!, txtKeyPath = null!, txtKeyPass = null!, txtRemoteHost = null!;
-        private NumericUpDown numGatewayPort = null!, numRemotePort = null!, numLocalPort = null!, numReconnectDelay = null!;
+        private TextBox txtPassword = null!, txtKeyPath = null!, txtKeyPass = null!;
+        private NumericUpDown numGatewayPort = null!, numReconnectDelay = null!;
+        private DataGridView gridForwards = null!;
         private RadioButton rbPassword = null!, rbKey = null!;
         private Label lblPassword = null!, lblKeyPath = null!, lblKeyPass = null!, lblStatus = null!;
         private Button btnBrowseKey = null!, btnSave = null!, btnConnect = null!, btnDisconnect = null!;

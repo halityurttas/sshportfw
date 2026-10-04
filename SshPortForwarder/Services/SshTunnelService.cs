@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Renci.SshNet;
@@ -23,7 +26,7 @@ namespace SshPortForwarder.Services
     public class SshTunnelService : IDisposable
     {
         private SshClient? _client;
-        private ForwardedPortLocal? _port;
+        private readonly List<ForwardedPortLocal> _ports = new();
         private CancellationTokenSource? _cts;
         private TunnelProfile? _profile;
         private volatile bool _disposed;
@@ -32,6 +35,32 @@ namespace SshPortForwarder.Services
         public event EventHandler<TunnelStatusEventArgs>? StatusChanged;
 
         public TunnelState CurrentState { get; private set; } = TunnelState.Disconnected;
+
+        /// <summary>Profilin bağlanmaya uygun olup olmadığını kontrol eder; hata mesajı ya da null döner.</summary>
+        public static string? Validate(TunnelProfile p)
+        {
+            var forwards = ActiveForwards(p);
+            if (forwards.Count == 0)
+                return "En az bir etkin port yönlendirme satırı olmalı. Tabloya satır ekleyip 'Etkin' kutusunu işaretleyin.";
+
+            var duplicate = forwards.GroupBy(f => f.LocalPort).FirstOrDefault(g => g.Count() > 1);
+            if (duplicate != null)
+                return $"Yerel port {duplicate.Key} birden fazla satırda kullanılıyor. Her satır için farklı bir yerel port seçin.";
+
+            foreach (var f in forwards)
+            {
+                if (string.IsNullOrWhiteSpace(f.RemoteHost))
+                    return $"Yerel port {f.LocalPort} satırında uzak host boş olamaz.";
+
+                if (f.LocalPort is < 1 or > 65535 || f.RemotePort is < 1 or > 65535)
+                    return "Portlar 1-65535 aralığında olmalıdır.";
+            }
+
+            return null;
+        }
+
+        private static List<PortForward> ActiveForwards(TunnelProfile p) =>
+            p.Forwards?.Where(f => f.Enabled).ToList() ?? new List<PortForward>();
 
         public void Start(TunnelProfile profile)
         {
@@ -61,8 +90,7 @@ namespace SshPortForwarder.Services
                 {
                     SetState(TunnelState.Connecting, "Bağlanılıyor...");
                     Connect();
-                    SetState(TunnelState.Connected,
-                        $"Bağlı — localhost:{_profile!.LocalPort} → {_profile.RemoteHost}:{_profile.RemotePort}");
+                    SetState(TunnelState.Connected, $"Bağlı — {DescribeForwards()}");
 
                     // Bağlantı kesilene kadar bekle
                     while (!token.IsCancellationRequested && _client != null && _client.IsConnected)
@@ -120,6 +148,9 @@ namespace SshPortForwarder.Services
         private void Connect()
         {
             var p = _profile!;
+            var forwards = ActiveForwards(p);
+            if (forwards.Count == 0)
+                throw new InvalidOperationException("Etkin port yönlendirme tanımlı değil.");
 
             ConnectionInfo connInfo;
             if (p.AuthMethod == AuthMethod.PrivateKey)
@@ -140,23 +171,47 @@ namespace SshPortForwarder.Services
             _client = new SshClient(connInfo);
             _client.Connect();
 
-            _port = new ForwardedPortLocal(
-                IPAddress.Loopback.ToString(),
-                (uint)p.LocalPort,
-                p.RemoteHost,
-                (uint)p.RemotePort);
+            // Tüm yönlendirmeler aynı SSH bağlantısı üzerinden açılır.
+            foreach (var f in forwards)
+            {
+                var port = new ForwardedPortLocal(
+                    IPAddress.Loopback.ToString(),
+                    (uint)f.LocalPort,
+                    f.RemoteHost,
+                    (uint)f.RemotePort);
 
-            _client.AddForwardedPort(_port);
-            _port.Start();
+                _client.AddForwardedPort(port);
+                port.Start();
+                _ports.Add(port);
+            }
+        }
+
+        private string DescribeForwards()
+        {
+            var forwards = ActiveForwards(_profile!);
+            var sb = new StringBuilder();
+            foreach (var f in forwards)
+            {
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append($"localhost:{f.LocalPort} → {f.RemoteHost}:{f.RemotePort}");
+            }
+
+            return forwards.Count > 1
+                ? $"{forwards.Count} yönlendirme: {sb}"
+                : sb.ToString();
         }
 
         private void Cleanup()
         {
-            try { _port?.Stop(); } catch { }
-            try { _port?.Dispose(); } catch { }
+            foreach (var port in _ports)
+            {
+                try { port.Stop(); } catch { }
+                try { port.Dispose(); } catch { }
+            }
+            _ports.Clear();
+
             try { _client?.Disconnect(); } catch { }
             try { _client?.Dispose(); } catch { }
-            _port = null;
             _client = null;
         }
 
